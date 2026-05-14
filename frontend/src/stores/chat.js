@@ -76,7 +76,13 @@ export const useChatStore = defineStore('chat', () => {
   async function saveCurrentConversation() {
     // 过滤掉错误消息
     const validMessages = messages.value.filter(m => !m.isError)
-    if (validMessages.length === 0) return null
+    if (validMessages.length === 0) {
+      // 如果没有有效消息，但有当前对话，说明是对话被清空了，刷新历史记录
+      if (currentConversation.value) {
+        await loadConversations()
+      }
+      return null
+    }
     
     try {
       let conv
@@ -115,7 +121,18 @@ export const useChatStore = defineStore('chat', () => {
     
     try {
       const conv = await api.appendMessage(currentConversation.value.id, message)
-      currentConversation.value = conv
+      
+      // 如果是用户消息，更新对话标题为最新的提问
+      if (message.role === 'user') {
+        const updatedConv = await api.updateConversation(currentConversation.value.id, {
+          title: generateTitle([...messages.value, message])
+        })
+        currentConversation.value = updatedConv
+        await loadConversations()
+      } else {
+        currentConversation.value = conv
+      }
+      
       return conv
     } catch (error) {
       console.error('Failed to append message:', error)
@@ -124,9 +141,11 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function generateTitle(messages) {
-    const firstUserMessage = messages.find(m => m.role === 'user')
-    if (firstUserMessage) {
-      const content = firstUserMessage.content.trim()
+    // 获取最后一条用户消息作为标题
+    const userMessages = messages.filter(m => m.role === 'user')
+    const lastUserMessage = userMessages[userMessages.length - 1]
+    if (lastUserMessage) {
+      const content = lastUserMessage.content.trim()
       const firstLine = content.split('\n')[0]
       const title = firstLine.substring(0, 40)
       return title.length < firstLine.length ? title + '...' : title
@@ -137,10 +156,12 @@ export const useChatStore = defineStore('chat', () => {
   async function startNewConversation() {
     if (isLoading.value) return
     
+    // 如果有当前对话且有消息，保存为历史记录
     if (messages.value.length > 0) {
       await saveCurrentConversation()
     }
     
+    // 清空消息并开始新的对话空间
     messages.value = []
     currentConversation.value = null
     streamingContent.value = ''
