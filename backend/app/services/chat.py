@@ -128,7 +128,8 @@ class ChatService:
         self,
         title: str,
         model: str,
-        provider: str
+        provider: str,
+        messages: Optional[List[Dict[str, str]]] = None
     ) -> Conversation:
         """创建新对话"""
         conversation = Conversation(
@@ -137,6 +138,46 @@ class ChatService:
             provider=provider
         )
         self.db.add(conversation)
+        await self.db.commit()
+        await self.db.refresh(conversation)
+        
+        if messages:
+            for msg in messages:
+                message = Message(
+                    conversation_id=conversation.id,
+                    role=msg["role"],
+                    content=msg["content"]
+                )
+                self.db.add(message)
+            await self.db.commit()
+            await self.db.refresh(conversation)
+        
+        return conversation
+    
+    async def update_conversation(
+        self,
+        conversation_id: int,
+        title: Optional[str] = None,
+        messages: Optional[List[Dict[str, str]]] = None
+    ) -> Optional[Conversation]:
+        """更新对话"""
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return None
+        
+        if title is not None:
+            conversation.title = title
+        
+        if messages is not None:
+            conversation.messages.clear()
+            for msg in messages:
+                message = Message(
+                    conversation_id=conversation_id,
+                    role=msg["role"],
+                    content=msg["content"]
+                )
+                self.db.add(message)
+        
         await self.db.commit()
         await self.db.refresh(conversation)
         return conversation

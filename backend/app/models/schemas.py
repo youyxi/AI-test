@@ -86,10 +86,12 @@ class ChatResponse(BaseModel):
 
 # ========== Conversation Models ==========
 class ConversationCreate(BaseModel):
-    """Create conversation"""
+    """Create or update conversation"""
+    id: Optional[int] = None
     title: str = "New Chat"
     model: str
     provider: str
+    messages: Optional[List[ChatMessage]] = []
 
 
 class ConversationUpdate(BaseModel):

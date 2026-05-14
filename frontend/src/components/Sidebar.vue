@@ -19,8 +19,9 @@
     <!-- New Chat Button -->
     <div class="p-3" v-if="!collapsed">
       <button
-        @click="newChat"
-        class="w-full py-2.5 px-4 bg-primary-500 hover:bg-primary-600 rounded-lg flex items-center justify-center gap-2 transition-colors"
+        @click="handleNewChat"
+        :disabled="store.isLoading"
+        class="w-full py-2.5 px-4 bg-primary-500 hover:bg-primary-600 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -105,7 +106,17 @@ function newChat() {
   store.clearMessages()
 }
 
+async function handleNewChat() {
+  await store.startNewConversation()
+}
+
 async function selectConversation(conv) {
+  if (store.isLoading) return
+  
+  if (store.messages.length > 0 && store.currentConversation?.id !== conv.id) {
+    await store.saveCurrentConversation()
+  }
+  
   await store.loadConversationMessages(conv.id)
 }
 

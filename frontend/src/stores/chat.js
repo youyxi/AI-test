@@ -73,6 +73,65 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function saveCurrentConversation() {
+    if (messages.value.length === 0) return null
+    
+    try {
+      let conv
+      if (currentConversation.value) {
+        conv = await api.createConversation({
+          id: currentConversation.value.id,
+          title: generateTitle(messages.value),
+          model: currentModel.value.id,
+          provider: currentModel.value.provider,
+          messages: messages.value.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        })
+        currentConversation.value = conv
+      } else {
+        conv = await api.createConversation({
+          title: generateTitle(messages.value),
+          model: currentModel.value.id,
+          provider: currentModel.value.provider,
+          messages: messages.value.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        })
+        currentConversation.value = conv
+      }
+      
+      await loadConversations()
+      return conv
+    } catch (error) {
+      console.error('Failed to save conversation:', error)
+      return null
+    }
+  }
+
+  function generateTitle(messages) {
+    const firstUserMessage = messages.find(m => m.role === 'user')
+    if (firstUserMessage) {
+      const title = firstUserMessage.content.substring(0, 30)
+      return title.length < firstUserMessage.content.length ? title + '...' : title
+    }
+    return 'New Chat'
+  }
+
+  async function startNewConversation() {
+    if (isLoading.value) return
+    
+    if (messages.value.length > 0) {
+      await saveCurrentConversation()
+    }
+    
+    messages.value = []
+    currentConversation.value = null
+    streamingContent.value = ''
+  }
+
   async function sendMessage(content) {
     if (!content.trim() || isLoading.value) return
 
@@ -181,6 +240,8 @@ export const useChatStore = defineStore('chat', () => {
     loadProviders,
     loadConversations,
     loadConversationMessages,
+    saveCurrentConversation,
+    startNewConversation,
     sendMessage,
     stopGeneration,
     clearMessages,

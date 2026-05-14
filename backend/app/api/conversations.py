@@ -21,14 +21,23 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    创建新对话
+    创建或更新对话
     """
     service = ChatService(db)
-    conversation = await service.create_conversation(
-        title=request.title,
-        model=request.model,
-        provider=request.provider
-    )
+    
+    if request.id:
+        conversation = await service.update_conversation(
+            conversation_id=request.id,
+            title=request.title,
+            messages=request.messages or []
+        )
+    else:
+        conversation = await service.create_conversation(
+            title=request.title,
+            model=request.model,
+            provider=request.provider,
+            messages=request.messages or []
+        )
     
     return ConversationResponse(
         id=conversation.id,
@@ -37,7 +46,10 @@ async def create_conversation(
         provider=conversation.provider,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
-        messages=[]
+        messages=[
+            ChatMessage(role=m.role, content=m.content)
+            for m in conversation.messages
+        ]
     )
 
 
