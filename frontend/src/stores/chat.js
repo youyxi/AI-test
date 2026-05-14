@@ -114,8 +114,10 @@ export const useChatStore = defineStore('chat', () => {
   function generateTitle(messages) {
     const firstUserMessage = messages.find(m => m.role === 'user')
     if (firstUserMessage) {
-      const title = firstUserMessage.content.substring(0, 30)
-      return title.length < firstUserMessage.content.length ? title + '...' : title
+      const content = firstUserMessage.content.trim()
+      const firstLine = content.split('\n')[0]
+      const title = firstLine.substring(0, 40)
+      return title.length < firstLine.length ? title + '...' : title
     }
     return 'New Chat'
   }
@@ -190,6 +192,8 @@ export const useChatStore = defineStore('chat', () => {
     } finally {
       isLoading.value = false
       isStopped.value = false
+      
+      await saveCurrentConversation()
     }
   }
 

@@ -169,7 +169,11 @@ class ChatService:
             conversation.title = title
         
         if messages is not None:
-            conversation.messages.clear()
+            # 清除旧消息
+            await self.db.execute(
+                Message.__table__.delete().where(Message.conversation_id == conversation_id)
+            )
+            # 添加新消息
             for msg in messages:
                 message = Message(
                     conversation_id=conversation_id,

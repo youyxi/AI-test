@@ -102,10 +102,6 @@ onMounted(() => {
   store.loadConversations()
 })
 
-function newChat() {
-  store.clearMessages()
-}
-
 async function handleNewChat() {
   await store.startNewConversation()
 }
