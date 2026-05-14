@@ -170,8 +170,9 @@ class ChatService:
         
         if messages is not None:
             # 清除旧消息
+            from sqlalchemy import delete
             await self.db.execute(
-                Message.__table__.delete().where(Message.conversation_id == conversation_id)
+                delete(Message).where(Message.conversation_id == conversation_id)
             )
             # 添加新消息
             for msg in messages:

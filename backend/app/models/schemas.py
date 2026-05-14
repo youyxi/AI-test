@@ -97,6 +97,7 @@ class ConversationCreate(BaseModel):
 class ConversationUpdate(BaseModel):
     """Update conversation"""
     title: Optional[str] = None
+    messages: Optional[List[ChatMessage]] = None
 
 
 class ConversationResponse(BaseModel):

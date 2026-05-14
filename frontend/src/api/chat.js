@@ -157,6 +157,11 @@ export async function createConversation(data) {
   return response.data
 }
 
+export async function updateConversation(id, data) {
+  const response = await api.put(`/conversations/${id}`, data)
+  return response.data
+}
+
 export async function deleteConversation(id) {
   const response = await api.delete(`/conversations/${id}`)
   return response.data

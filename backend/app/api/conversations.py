@@ -7,7 +7,7 @@ from typing import List
 
 from ..core.database import get_db
 from ..models import (
-    ConversationCreate, ConversationResponse, ChatMessage,
+    ConversationCreate, ConversationUpdate, ConversationResponse, ChatMessage,
     SuccessResponse
 )
 from ..services import ChatService
@@ -105,6 +105,39 @@ async def get_conversation(
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
         messages=messages
+    )
+
+
+@router.put("/{conversation_id}", response_model=ConversationResponse)
+async def update_conversation(
+    conversation_id: int,
+    request: ConversationUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    更新对话
+    """
+    service = ChatService(db)
+    conversation = await service.update_conversation(
+        conversation_id=conversation_id,
+        title=request.title,
+        messages=request.messages
+    )
+    
+    if not conversation:
+        raise HTTPException(status_code=404, detail="对话不存在")
+    
+    return ConversationResponse(
+        id=conversation.id,
+        title=conversation.title,
+        model=conversation.model,
+        provider=conversation.provider,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        messages=[
+            ChatMessage(role=m.role, content=m.content)
+            for m in conversation.messages
+        ]
     )
 
 

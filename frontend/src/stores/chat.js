@@ -74,17 +74,16 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function saveCurrentConversation() {
-    if (messages.value.length === 0) return null
+    // 过滤掉错误消息
+    const validMessages = messages.value.filter(m => !m.isError)
+    if (validMessages.length === 0) return null
     
     try {
       let conv
       if (currentConversation.value) {
-        conv = await api.createConversation({
-          id: currentConversation.value.id,
-          title: generateTitle(messages.value),
-          model: currentModel.value.id,
-          provider: currentModel.value.provider,
-          messages: messages.value.map(m => ({
+        conv = await api.updateConversation(currentConversation.value.id, {
+          title: generateTitle(validMessages),
+          messages: validMessages.map(m => ({
             role: m.role,
             content: m.content
           }))
@@ -92,10 +91,10 @@ export const useChatStore = defineStore('chat', () => {
         currentConversation.value = conv
       } else {
         conv = await api.createConversation({
-          title: generateTitle(messages.value),
+          title: generateTitle(validMessages),
           model: currentModel.value.id,
           provider: currentModel.value.provider,
-          messages: messages.value.map(m => ({
+          messages: validMessages.map(m => ({
             role: m.role,
             content: m.content
           }))
