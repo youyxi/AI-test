@@ -3,7 +3,6 @@ Gemini适配器
 支持Google Gemini系列模型
 """
 from typing import AsyncGenerator, List, Dict, Any, Optional
-import google.generativeai as genai
 from .base import BaseAdapter, ChatResult
 
 
@@ -24,6 +23,7 @@ class GeminiAdapter(BaseAdapter):
         super().__init__(config)
         if self.is_configured() and config.get("api_key"):
             try:
+                import google.generativeai as genai
                 genai.configure(api_key=config.get("api_key"))
             except Exception:
                 pass  # 配置失败时不抛出异常
@@ -39,6 +39,8 @@ class GeminiAdapter(BaseAdapter):
         """发送聊天请求"""
         if not self.is_configured():
             raise ValueError("Google API Key未配置")
+        
+        import google.generativeai as genai
         
         # 转换消息格式
         history = []
@@ -87,6 +89,8 @@ class GeminiAdapter(BaseAdapter):
         """流式聊天"""
         if not self.is_configured():
             raise ValueError("Google API Key未配置")
+        
+        import google.generativeai as genai
         
         # 获取最后一条用户消息
         user_message = ""

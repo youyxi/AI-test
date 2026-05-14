@@ -4,27 +4,55 @@ AI模型适配器管理器
 """
 from typing import Dict, List, Optional, Type
 from .base import BaseAdapter
-from .openai import OpenAIAdapter
-from .claude import ClaudeAdapter
-from .gemini import GeminiAdapter
-from .domestic import BaiduAdapter, QwenAdapter, ZhipuAdapter
-from .local import OllamaAdapter, VLLMAdapter
+
+
+# 安全导入适配器
+def _safe_import_adapters():
+    """安全导入适配器，处理所有可能的导入错误"""
+    adapter_classes = {}
+    
+    # 尝试导入各个适配器，捕获所有异常
+    try:
+        from .openai import OpenAIAdapter
+        adapter_classes["openai"] = OpenAIAdapter
+    except Exception:
+        pass
+    
+    try:
+        from .claude import ClaudeAdapter
+        adapter_classes["claude"] = ClaudeAdapter
+    except Exception:
+        pass
+    
+    try:
+        from .gemini import GeminiAdapter
+        adapter_classes["gemini"] = GeminiAdapter
+    except Exception:
+        pass
+    
+    try:
+        from .domestic import BaiduAdapter, QwenAdapter, ZhipuAdapter
+        adapter_classes["baidu"] = BaiduAdapter
+        adapter_classes["qwen"] = QwenAdapter
+        adapter_classes["zhipu"] = ZhipuAdapter
+    except Exception:
+        pass
+    
+    try:
+        from .local import OllamaAdapter, VLLMAdapter
+        adapter_classes["ollama"] = OllamaAdapter
+        adapter_classes["vllm"] = VLLMAdapter
+    except Exception:
+        pass
+    
+    return adapter_classes
 
 
 class AdapterManager:
     """适配器管理器"""
     
-    # 注册的适配器类
-    ADAPTER_CLASSES: Dict[str, Type[BaseAdapter]] = {
-        "openai": OpenAIAdapter,
-        "claude": ClaudeAdapter,
-        "gemini": GeminiAdapter,
-        "baidu": BaiduAdapter,
-        "qwen": QwenAdapter,
-        "zhipu": ZhipuAdapter,
-        "ollama": OllamaAdapter,
-        "vllm": VLLMAdapter,
-    }
+    # 注册的适配器类（使用安全导入）
+    ADAPTER_CLASSES: Dict[str, Type[BaseAdapter]] = _safe_import_adapters()
     
     def __init__(self):
         self._adapters: Dict[str, BaseAdapter] = {}
@@ -102,58 +130,90 @@ def init_adapters(settings) -> AdapterManager:
     Returns:
         AdapterManager: 适配器管理器实例
     """
+    # 安全导入各个适配器类
+    adapters_available = AdapterManager.ADAPTER_CLASSES
+    
     # OpenAI
-    if settings.OPENAI_API_KEY:
-        adapter_manager.register_adapter(
-            "openai",
-            OpenAIAdapter({
-                "api_key": settings.OPENAI_API_KEY,
-                "base_url": settings.OPENAI_BASE_URL
-            })
-        )
+    if "openai" in adapters_available and settings.OPENAI_API_KEY:
+        try:
+            OpenAIAdapter = adapters_available["openai"]
+            adapter_manager.register_adapter(
+                "openai",
+                OpenAIAdapter({
+                    "api_key": settings.OPENAI_API_KEY,
+                    "base_url": settings.OPENAI_BASE_URL
+                })
+            )
+        except Exception:
+            pass
     
     # Claude
-    if settings.ANTHROPIC_API_KEY:
-        adapter_manager.register_adapter(
-            "claude",
-            ClaudeAdapter({"api_key": settings.ANTHROPIC_API_KEY})
-        )
+    if "claude" in adapters_available and settings.ANTHROPIC_API_KEY:
+        try:
+            ClaudeAdapter = adapters_available["claude"]
+            adapter_manager.register_adapter(
+                "claude",
+                ClaudeAdapter({"api_key": settings.ANTHROPIC_API_KEY})
+            )
+        except Exception:
+            pass
     
     # Gemini
-    if settings.GOOGLE_API_KEY:
-        adapter_manager.register_adapter(
-            "gemini",
-            GeminiAdapter({"api_key": settings.GOOGLE_API_KEY})
-        )
+    if "gemini" in adapters_available and settings.GOOGLE_API_KEY:
+        try:
+            GeminiAdapter = adapters_available["gemini"]
+            adapter_manager.register_adapter(
+                "gemini",
+                GeminiAdapter({"api_key": settings.GOOGLE_API_KEY})
+            )
+        except Exception:
+            pass
     
     # 百度文心一言
-    if settings.BAIDU_API_KEY and settings.BAIDU_SECRET_KEY:
-        adapter_manager.register_adapter(
-            "baidu",
-            BaiduAdapter({
-                "api_key": settings.BAIDU_API_KEY,
-                "secret_key": settings.BAIDU_SECRET_KEY
-            })
-        )
+    if "baidu" in adapters_available and settings.BAIDU_API_KEY and settings.BAIDU_SECRET_KEY:
+        try:
+            BaiduAdapter = adapters_available["baidu"]
+            adapter_manager.register_adapter(
+                "baidu",
+                BaiduAdapter({
+                    "api_key": settings.BAIDU_API_KEY,
+                    "secret_key": settings.BAIDU_SECRET_KEY
+                })
+            )
+        except Exception:
+            pass
     
     # 通义千问
-    if settings.QWEN_API_KEY:
-        adapter_manager.register_adapter(
-            "qwen",
-            QwenAdapter({"api_key": settings.QWEN_API_KEY})
-        )
+    if "qwen" in adapters_available and settings.QWEN_API_KEY:
+        try:
+            QwenAdapter = adapters_available["qwen"]
+            adapter_manager.register_adapter(
+                "qwen",
+                QwenAdapter({"api_key": settings.QWEN_API_KEY})
+            )
+        except Exception:
+            pass
     
     # 智谱AI
-    if settings.ZHIPU_API_KEY:
-        adapter_manager.register_adapter(
-            "zhipu",
-            ZhipuAdapter({"api_key": settings.ZHIPU_API_KEY})
-        )
+    if "zhipu" in adapters_available and settings.ZHIPU_API_KEY:
+        try:
+            ZhipuAdapter = adapters_available["zhipu"]
+            adapter_manager.register_adapter(
+                "zhipu",
+                ZhipuAdapter({"api_key": settings.ZHIPU_API_KEY})
+            )
+        except Exception:
+            pass
     
     # Ollama (本地，默认启用)
-    adapter_manager.register_adapter(
-        "ollama",
-        OllamaAdapter({"base_url": settings.OLLAMA_BASE_URL})
-    )
+    if "ollama" in adapters_available:
+        try:
+            OllamaAdapter = adapters_available["ollama"]
+            adapter_manager.register_adapter(
+                "ollama",
+                OllamaAdapter({"base_url": settings.OLLAMA_BASE_URL})
+            )
+        except Exception:
+            pass
     
     return adapter_manager
