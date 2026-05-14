@@ -162,6 +162,11 @@ export async function updateConversation(id, data) {
   return response.data
 }
 
+export async function appendMessage(conversationId, message) {
+  const response = await api.post(`/conversations/${conversationId}/messages`, message)
+  return response.data
+}
+
 export async function deleteConversation(id) {
   const response = await api.delete(`/conversations/${id}`)
   return response.data

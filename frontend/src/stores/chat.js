@@ -110,6 +110,19 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function appendMessageToConversation(message) {
+    if (!currentConversation.value) return null
+    
+    try {
+      const conv = await api.appendMessage(currentConversation.value.id, message)
+      currentConversation.value = conv
+      return conv
+    } catch (error) {
+      console.error('Failed to append message:', error)
+      return null
+    }
+  }
+
   function generateTitle(messages) {
     const firstUserMessage = messages.find(m => m.role === 'user')
     if (firstUserMessage) {
@@ -143,6 +156,17 @@ export const useChatStore = defineStore('chat', () => {
     }
     messages.value.push(userMessage)
 
+    // 保存用户消息到数据库
+    if (currentConversation.value) {
+      await appendMessageToConversation({
+        role: 'user',
+        content: content.trim()
+      })
+    } else {
+      // 创建新对话
+      await saveCurrentConversation()
+    }
+
     isLoading.value = true
     streamingContent.value = ''
     isStopped.value = false
@@ -161,8 +185,15 @@ export const useChatStore = defineStore('chat', () => {
       })
 
       if (streamingContent.value) {
-        messages.value.push({
+        const assistantMessage = {
           id: Date.now() + 1,
+          role: 'assistant',
+          content: streamingContent.value
+        }
+        messages.value.push(assistantMessage)
+        
+        // 保存助手回复到数据库
+        await appendMessageToConversation({
           role: 'assistant',
           content: streamingContent.value
         })
@@ -191,8 +222,6 @@ export const useChatStore = defineStore('chat', () => {
     } finally {
       isLoading.value = false
       isStopped.value = false
-      
-      await saveCurrentConversation()
     }
   }
 

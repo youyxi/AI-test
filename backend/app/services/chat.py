@@ -124,6 +124,27 @@ class ChatService:
         
         await self.db.commit()
     
+    async def append_message(
+        self,
+        conversation_id: int,
+        role: str,
+        content: str
+    ) -> Optional[Conversation]:
+        """追加消息到对话"""
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return None
+        
+        message = Message(
+            conversation_id=conversation_id,
+            role=role,
+            content=content
+        )
+        self.db.add(message)
+        await self.db.commit()
+        await self.db.refresh(conversation)
+        return conversation
+    
     async def create_conversation(
         self,
         title: str,

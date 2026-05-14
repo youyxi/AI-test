@@ -86,8 +86,7 @@ class ChatResponse(BaseModel):
 
 # ========== Conversation Models ==========
 class ConversationCreate(BaseModel):
-    """Create or update conversation"""
-    id: Optional[int] = None
+    """Create conversation"""
     title: str = "New Chat"
     model: str
     provider: str
@@ -98,6 +97,12 @@ class ConversationUpdate(BaseModel):
     """Update conversation"""
     title: Optional[str] = None
     messages: Optional[List[ChatMessage]] = None
+
+
+class MessageCreate(BaseModel):
+    """Create message"""
+    role: Literal["user", "assistant", "system"]
+    content: str
 
 
 class ConversationResponse(BaseModel):

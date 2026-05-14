@@ -8,7 +8,7 @@ from typing import List
 from ..core.database import get_db
 from ..models import (
     ConversationCreate, ConversationUpdate, ConversationResponse, ChatMessage,
-    SuccessResponse
+    SuccessResponse, MessageCreate
 )
 from ..services import ChatService
 
@@ -21,23 +21,16 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    创建或更新对话
+    创建新对话
     """
     service = ChatService(db)
     
-    if request.id:
-        conversation = await service.update_conversation(
-            conversation_id=request.id,
-            title=request.title,
-            messages=request.messages or []
-        )
-    else:
-        conversation = await service.create_conversation(
-            title=request.title,
-            model=request.model,
-            provider=request.provider,
-            messages=request.messages or []
-        )
+    conversation = await service.create_conversation(
+        title=request.title,
+        model=request.model,
+        provider=request.provider,
+        messages=request.messages or []
+    )
     
     return ConversationResponse(
         id=conversation.id,
@@ -88,6 +81,41 @@ async def get_conversation(
     """
     service = ChatService(db)
     conversation = await service.get_conversation(conversation_id)
+    
+    if not conversation:
+        raise HTTPException(status_code=404, detail="对话不存在")
+    
+    messages = [
+        ChatMessage(role=m.role, content=m.content)
+        for m in conversation.messages
+    ]
+    
+    return ConversationResponse(
+        id=conversation.id,
+        title=conversation.title,
+        model=conversation.model,
+        provider=conversation.provider,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        messages=messages
+    )
+
+
+@router.post("/{conversation_id}/messages", response_model=ConversationResponse)
+async def append_message(
+    conversation_id: int,
+    request: MessageCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    追加消息到对话
+    """
+    service = ChatService(db)
+    conversation = await service.append_message(
+        conversation_id=conversation_id,
+        role=request.role,
+        content=request.content
+    )
     
     if not conversation:
         raise HTTPException(status_code=404, detail="对话不存在")
