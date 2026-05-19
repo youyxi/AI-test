@@ -37,16 +37,17 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  // Allow access to guest pages (login) even if logged in
+  if (authStore.skipAuth) {
+    return next()
+  }
+
   if (to.meta.guest && authStore.isLoggedIn) {
     return next('/')
   }
 
-  // Redirect to login if not authenticated (except guest pages)
   if (!to.meta.guest && !authStore.isLoggedIn) {
     return next('/login')
   }

@@ -6,11 +6,21 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(null)
   const loading = ref(false)
+  const skipAuth = ref(true)
 
-  const isLoggedIn = computed(() => !!token.value && !!user.value)
+  const isLoggedIn = computed(() => !!token.value && !!user.value || skipAuth.value)
 
-  // Init from localStorage
   function init() {
+    if (skipAuth.value) {
+      user.value = {
+        id: 'guest',
+        username: 'guest',
+        nickname: '访客用户'
+      }
+      token.value = 'guest-token'
+      return
+    }
+
     const savedToken = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
     if (savedToken && savedUser) {
@@ -87,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, token, loading, isLoggedIn,
+    user, token, loading, isLoggedIn, skipAuth,
     init, login, register, fetchUser,
     updateProfile, updateSettings, changePassword, logout
   }

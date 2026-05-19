@@ -60,6 +60,7 @@
                   设置
                 </router-link>
                 <button
+                  v-if="!authStore.skipAuth"
                   @click="handleLogout"
                   class="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded-lg text-sm text-red-600 transition-colors"
                 >
@@ -104,6 +105,8 @@ onMounted(() => {
 function handleLogout() {
   authStore.logout()
   showUserMenu.value = false
-  router.push('/login')
+  if (!authStore.skipAuth) {
+    router.push('/login')
+  }
 }
 </script>
