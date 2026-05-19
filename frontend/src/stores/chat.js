@@ -184,6 +184,7 @@ export const useChatStore = defineStore('chat', () => {
   async function sendMessage(content) {
     if (!content.trim() || isLoading.value) return
 
+    // 创建用户消息
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -196,15 +197,19 @@ export const useChatStore = defineStore('chat', () => {
     isStopped.value = false
 
     try {
-      const response = await api.streamChat({
-        messages: messages.value.map(m => ({
-          role: m.role,
-          content: m.content
-        })),
+      // 传递完整的消息历史给AI（用于上下文）
+      const conversationHistory = messages.value.map(m => ({
+        role: m.role,
+        content: m.content
+      }))
+
+      await api.streamChat({
+        messages: conversationHistory,
         model: currentModel.value.id,
         provider: currentModel.value.provider,
         stream: true,
-        conversation_id: currentConversation.value?.id || null
+        conversation_id: currentConversation.value?.id || null,
+        user_message: userMessage.content // 单独传递当前用户消息
       }, (chunk) => {
         streamingContent.value += chunk
       })
@@ -228,7 +233,9 @@ export const useChatStore = defineStore('chat', () => {
       if (!currentConversation.value?.id) {
         const latestConversations = await api.getConversations()
         if (latestConversations.length > 0) {
-          currentConversation.value = latestConversations[0]
+          // 找到刚创建的对话
+          const newConv = latestConversations[0]
+          currentConversation.value = newConv
         }
       }
     } catch (error) {

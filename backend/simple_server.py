@@ -116,6 +116,7 @@ class ChatRequest(BaseModel):
     stream: bool = True
     temperature: float = 0.7
     conversation_id: Optional[int] = None
+    user_message: Optional[str] = None
 
 class MessageCreate(BaseModel):
     role: str
@@ -183,7 +184,7 @@ async def get_models():
 @app.post("/api/v1/chat/stream")
 async def chat_stream(request: ChatRequest):
     async def generate():
-        user_message = request.messages[-1].content if request.messages else "Hello"
+        user_message = request.user_message or (request.messages[-1].content if request.messages else "Hello")
         
         # 生成模拟响应
         response_parts = [
@@ -212,7 +213,7 @@ async def chat_stream(request: ChatRequest):
         # 保存消息到数据库
         await save_chat_messages(
             conversation_id=request.conversation_id,
-            messages=request.messages,
+            user_message=user_message,
             assistant_response=full_response,
             model=request.model,
             provider=request.provider
@@ -220,7 +221,7 @@ async def chat_stream(request: ChatRequest):
     
     return StreamingResponse(generate(), media_type="text/event-stream")
 
-async def save_chat_messages(conversation_id, messages, assistant_response, model, provider):
+async def save_chat_messages(conversation_id, user_message, assistant_response, model, provider):
     """保存聊天消息到数据库"""
     global conversations_db
     
@@ -230,42 +231,30 @@ async def save_chat_messages(conversation_id, messages, assistant_response, mode
             new_id = max([c["id"] for c in conversations_db], default=0) + 1
             new_conv = {
                 "id": new_id,
-                "title": generate_title(messages[0].content if messages else "新对话"),
+                "title": generate_title(user_message),
                 "model": model,
                 "provider": provider,
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat(),
-                "messages": []
+                "messages": [
+                    {"role": "user", "content": user_message},
+                    {"role": "assistant", "content": assistant_response}
+                ]
             }
             
-            # 添加用户消息
-            for msg in messages:
-                new_conv["messages"].append({
-                    "role": msg.role,
-                    "content": msg.content
-                })
-            
-            # 添加助手回复
-            new_conv["messages"].append({
-                "role": "assistant",
-                "content": assistant_response
-            })
-            
             conversations_db.append(new_conv)
-            print(f"✅ 创建新对话 {new_id}: {new_conv['title']}")
+            print(f"✅ 创建新对话 {new_id}: {new_conv['title']} ({len(new_conv['messages'])}条消息)")
         else:
             # 更新现有对话
             conv = next((c for c in conversations_db if c["id"] == conversation_id), None)
             if conv:
-                # 添加最后一条用户消息（如果不在消息列表中）
-                if not any(m.role == "user" for m in messages[-1:]):
-                    if messages:
-                        conv["messages"].append({
-                            "role": messages[-1].role,
-                            "content": messages[-1].content
-                        })
+                # 追加用户消息
+                conv["messages"].append({
+                    "role": "user",
+                    "content": user_message
+                })
                 
-                # 添加助手回复
+                # 追加助手回复
                 conv["messages"].append({
                     "role": "assistant",
                     "content": assistant_response
@@ -273,10 +262,10 @@ async def save_chat_messages(conversation_id, messages, assistant_response, mode
                 
                 # 更新标题（如果是对话的第一条）
                 if len(conv["messages"]) == 2:
-                    conv["title"] = generate_title(messages[0].content if messages else "新对话")
+                    conv["title"] = generate_title(user_message)
                 
                 conv["updated_at"] = datetime.now().isoformat()
-                print(f"✅ 更新对话 {conversation_id}: {conv['title']}")
+                print(f"✅ 更新对话 {conversation_id}: {conv['title']} ({len(conv['messages'])}条消息)")
     except Exception as e:
         print(f"❌ 保存消息失败: {e}")
 
@@ -304,7 +293,7 @@ async def list_conversations():
             "created_at": c["created_at"],
             "updated_at": c["updated_at"],
         }
-        for c in conversations_db
+        for c in sorted(conversations_db, key=lambda x: x["updated_at"], reverse=True)
     ]
 
 @app.get("/api/v1/conversations/{conversation_id}")
@@ -398,4 +387,6 @@ if __name__ == "__main__":
     print("   - 创建新对话")
     print("   - 更新对话标题")
     print("   - 添加消息到指定对话")
+    print("✅ Bug修复：")
+    print("   - 修复问答添加不完整的问题")
     uvicorn.run(app, host="0.0.0.0", port=8000)
