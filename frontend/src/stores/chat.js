@@ -163,6 +163,17 @@ export const useChatStore = defineStore('chat', () => {
       const conv = await api.getConversation(conversationId)
       currentConversation.value = conv
       messages.value = conv.messages || []
+      
+      // 如果对话有模型信息，更新当前模型
+      if (conv.model && conv.provider) {
+        const model = availableModels.value.find(
+          m => m.id === conv.model && m.provider === conv.provider
+        )
+        if (model) {
+          currentModel.value = model
+        }
+      }
+      
       return conv
     } catch (error) {
       console.error('Failed to load conversation messages:', error)
@@ -185,34 +196,48 @@ export const useChatStore = defineStore('chat', () => {
     isStopped.value = false
 
     try {
-      await api.streamChat({
+      const response = await api.streamChat({
         messages: messages.value.map(m => ({
           role: m.role,
           content: m.content
         })),
         model: currentModel.value.id,
         provider: currentModel.value.provider,
-        stream: true
+        stream: true,
+        conversation_id: currentConversation.value?.id || null
       }, (chunk) => {
         streamingContent.value += chunk
       })
 
+      // 处理成功响应
       if (streamingContent.value) {
-        messages.value.push({
+        const assistantMessage = {
           id: Date.now() + 1,
           role: 'assistant',
           content: streamingContent.value
-        })
+        }
+        messages.value.push(assistantMessage)
       }
 
       streamingContent.value = ''
+      
+      // 刷新对话列表
+      await loadConversations()
+      
+      // 如果是新对话，刷新当前对话以获取ID
+      if (!currentConversation.value?.id) {
+        const latestConversations = await api.getConversations()
+        if (latestConversations.length > 0) {
+          currentConversation.value = latestConversations[0]
+        }
+      }
     } catch (error) {
       if (error.name === 'AbortError') {
         if (streamingContent.value) {
           messages.value.push({
             id: Date.now() + 1,
             role: 'assistant',
-            content: streamingContent.value + '\n\n*[Stopped]*'
+            content: streamingContent.value + '\n\n*[已停止]*'
           })
         }
         streamingContent.value = ''
@@ -221,7 +246,7 @@ export const useChatStore = defineStore('chat', () => {
         messages.value.push({
           id: Date.now() + 1,
           role: 'assistant',
-          content: `Error: ${error.message}`,
+          content: `错误: ${error.message}`,
           isError: true
         })
       }
@@ -259,6 +284,23 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function updateConversationTitle(conversationId, newTitle) {
+    try {
+      const updated = await api.updateConversation(conversationId, { title: newTitle })
+      const index = conversations.value.findIndex(c => c.id === conversationId)
+      if (index !== -1) {
+        conversations.value[index] = { ...conversations.value[index], ...updated }
+      }
+      if (currentConversation.value?.id === conversationId) {
+        currentConversation.value = { ...currentConversation.value, ...updated }
+      }
+      return true
+    } catch (error) {
+      console.error('Failed to update conversation title:', error)
+      return false
+    }
+  }
+
   return {
     messages,
     conversations,
@@ -279,6 +321,7 @@ export const useChatStore = defineStore('chat', () => {
     stopGeneration,
     clearMessages,
     setModel,
-    deleteConversation
+    deleteConversation,
+    updateConversationTitle
   }
 })

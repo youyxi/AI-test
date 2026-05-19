@@ -2,6 +2,7 @@
 """
 简化版后端服务 - 用于预览
 不依赖编译的包，只使用标准库和纯Python包
+支持对话历史保存功能
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -116,19 +117,18 @@ class ChatRequest(BaseModel):
     temperature: float = 0.7
     conversation_id: Optional[int] = None
 
+class MessageCreate(BaseModel):
+    role: str
+    content: str
+    tokens: Optional[int] = None
+
 class ConversationCreate(BaseModel):
     title: str = "New Chat"
     model: str
     provider: str
 
-class ConversationResponse(BaseModel):
-    id: int
-    title: str
-    model: str
-    provider: str
-    created_at: str
-    updated_at: str
-    messages: List[ChatMessage] = []
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = None
 
 # API 端点
 @app.get("/")
@@ -179,12 +179,13 @@ async def get_models():
             })
     return models
 
-# 流式聊天
+# 流式聊天（包含消息保存）
 @app.post("/api/v1/chat/stream")
 async def chat_stream(request: ChatRequest):
     async def generate():
         user_message = request.messages[-1].content if request.messages else "Hello"
         
+        # 生成模拟响应
         response_parts = [
             "你好！",
             "我是AI助手，",
@@ -195,16 +196,101 @@ async def chat_stream(request: ChatRequest):
             "\n\n",
             "这是一个演示响应。",
             "实际使用时，",
-            "这里会调用真实的AI模型。"
+            "这里会调用真实的AI模型。",
+            "\n\n",
+            "✨ 对话已自动保存到数据库"
         ]
         
+        full_response = ""
         for i, part in enumerate(response_parts):
-            await asyncio.sleep(0.1)  # 模拟网络延迟
+            await asyncio.sleep(0.1)
+            full_response += part
             yield f"data: {json.dumps({'content': part})}\n\n"
         
         yield f"data: {json.dumps({'done': True})}\n\n"
+        
+        # 保存消息到数据库
+        await save_chat_messages(
+            conversation_id=request.conversation_id,
+            messages=request.messages,
+            assistant_response=full_response,
+            model=request.model,
+            provider=request.provider
+        )
     
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+async def save_chat_messages(conversation_id, messages, assistant_response, model, provider):
+    """保存聊天消息到数据库"""
+    global conversations_db
+    
+    try:
+        if conversation_id is None:
+            # 创建新对话
+            new_id = max([c["id"] for c in conversations_db], default=0) + 1
+            new_conv = {
+                "id": new_id,
+                "title": generate_title(messages[0].content if messages else "新对话"),
+                "model": model,
+                "provider": provider,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "messages": []
+            }
+            
+            # 添加用户消息
+            for msg in messages:
+                new_conv["messages"].append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            
+            # 添加助手回复
+            new_conv["messages"].append({
+                "role": "assistant",
+                "content": assistant_response
+            })
+            
+            conversations_db.append(new_conv)
+            print(f"✅ 创建新对话 {new_id}: {new_conv['title']}")
+        else:
+            # 更新现有对话
+            conv = next((c for c in conversations_db if c["id"] == conversation_id), None)
+            if conv:
+                # 添加最后一条用户消息（如果不在消息列表中）
+                if not any(m.role == "user" for m in messages[-1:]):
+                    if messages:
+                        conv["messages"].append({
+                            "role": messages[-1].role,
+                            "content": messages[-1].content
+                        })
+                
+                # 添加助手回复
+                conv["messages"].append({
+                    "role": "assistant",
+                    "content": assistant_response
+                })
+                
+                # 更新标题（如果是对话的第一条）
+                if len(conv["messages"]) == 2:
+                    conv["title"] = generate_title(messages[0].content if messages else "新对话")
+                
+                conv["updated_at"] = datetime.now().isoformat()
+                print(f"✅ 更新对话 {conversation_id}: {conv['title']}")
+    except Exception as e:
+        print(f"❌ 保存消息失败: {e}")
+
+def generate_title(first_message):
+    """生成对话标题"""
+    if not first_message:
+        return "新对话"
+    
+    # 取前30个字符作为标题
+    title = first_message[:30]
+    if len(first_message) > 30:
+        title += "..."
+    
+    return title
 
 # 对话管理
 @app.get("/api/v1/conversations")
@@ -238,7 +324,7 @@ async def get_conversation(conversation_id: int):
 
 @app.post("/api/v1/conversations")
 async def create_conversation(request: ConversationCreate):
-    new_id = max(c["id"] for c in conversations_db) + 1
+    new_id = max([c["id"] for c in conversations_db], default=0) + 1
     new_conv = {
         "id": new_id,
         "title": request.title,
@@ -259,6 +345,44 @@ async def create_conversation(request: ConversationCreate):
         "messages": []
     }
 
+@app.put("/api/v1/conversations/{conversation_id}")
+async def update_conversation(conversation_id: int, request: ConversationUpdate):
+    conv = next((c for c in conversations_db if c["id"] == conversation_id), None)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    if request.title:
+        conv["title"] = request.title
+    conv["updated_at"] = datetime.now().isoformat()
+    
+    return {
+        "id": conv["id"],
+        "title": conv["title"],
+        "model": conv["model"],
+        "provider": conv["provider"],
+        "created_at": conv["created_at"],
+        "updated_at": conv["updated_at"],
+        "messages": conv["messages"]
+    }
+
+@app.post("/api/v1/conversations/{conversation_id}/messages")
+async def add_message(conversation_id: int, request: MessageCreate):
+    """向指定对话添加消息"""
+    conv = next((c for c in conversations_db if c["id"] == conversation_id), None)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    conv["messages"].append({
+        "role": request.role,
+        "content": request.content
+    })
+    conv["updated_at"] = datetime.now().isoformat()
+    
+    return {
+        "success": True,
+        "message": "Message added"
+    }
+
 @app.delete("/api/v1/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: int):
     global conversations_db
@@ -267,6 +391,11 @@ async def delete_conversation(conversation_id: int):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 启动简化版后端服务...")
+    print("🚀 启动简化版后端服务（支持对话保存）...")
     print("📝 访问: http://localhost:8000/docs 查看API文档")
+    print("✅ 新增功能：")
+    print("   - 发送消息自动保存到数据库")
+    print("   - 创建新对话")
+    print("   - 更新对话标题")
+    print("   - 添加消息到指定对话")
     uvicorn.run(app, host="0.0.0.0", port=8000)
