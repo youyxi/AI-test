@@ -1,86 +1,124 @@
 <template>
   <aside
-    class="h-full bg-slate-800 text-white transition-all duration-300 flex flex-col"
-    :class="collapsed ? 'w-16' : 'w-64'"
+    class="h-full bg-gray-50 text-gray-800 transition-all duration-300 flex flex-col shadow-sm"
+    :class="collapsed ? 'w-16' : 'w-72'"
   >
-    <!-- Header -->
-    <div class="h-14 flex items-center justify-between px-4 border-b border-slate-700">
-      <span v-if="!collapsed" class="font-semibold">History</span>
-      <button
-        @click="$emit('toggle')"
-        class="p-1.5 hover:bg-slate-700 rounded transition-colors"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-        </svg>
-      </button>
-    </div>
-
-    <!-- New Chat Button -->
-    <div class="p-3" v-if="!collapsed">
-      <button
-        @click="newChat"
-        class="w-full py-2.5 px-4 bg-primary-500 hover:bg-primary-600 rounded-lg flex items-center justify-center gap-2 transition-colors"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        New Chat
-      </button>
-    </div>
-
-    <!-- Conversation List -->
-    <div class="flex-1 overflow-y-auto" v-if="!collapsed">
-      <!-- Empty State -->
-      <div v-if="store.conversations.length === 0" class="px-3 py-8 text-center text-slate-400 text-sm">
-        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-        No conversations yet
-      </div>
-
-      <!-- List -->
-      <div class="px-3 space-y-1">
-        <div
-          v-for="conv in store.conversations"
-          :key="conv.id"
-          @click="selectConversation(conv)"
-          class="p-3 hover:bg-slate-700 rounded-lg cursor-pointer transition-colors group"
-          :class="{ 'bg-slate-700': store.currentConversation?.id === conv.id }"
-        >
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <div class="text-sm truncate">{{ conv.title }}</div>
-              <div class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                <span class="inline-block px-1.5 py-0.5 bg-slate-600 rounded text-[10px]">{{ conv.provider }}</span>
-                <span>{{ formatTime(conv.updated_at) }}</span>
-              </div>
-            </div>
-            <button
-              @click.stop="deleteConv(conv.id)"
-              class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-600 rounded transition-all shrink-0"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
+    <!-- 用户信息头部 -->
+    <div class="p-4 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+          AI
+        </div>
+        <div v-if="!collapsed">
+          <div class="font-medium">AI Chat Hub</div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Settings -->
-    <div class="p-3 border-t border-slate-700" v-if="!collapsed">
-      <router-link
-        to="/settings"
-        class="w-full py-2 px-4 hover:bg-slate-700 rounded-lg flex items-center gap-2 text-sm text-slate-300 transition-colors"
+    <!-- 新对话按钮 -->
+    <div class="p-3" v-if="!collapsed">
+      <button
+        @click="newChat"
+        class="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center gap-3 transition-colors group"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Settings
-      </router-link>
+        <span class="font-medium text-gray-700">新对话</span>
+        <span class="ml-auto text-xs text-gray-400 font-medium">Ctrl K</span>
+      </button>
+    </div>
+
+    <!-- 功能菜单 -->
+    <div class="px-3 space-y-1" v-if="!collapsed">
+      <button class="w-full py-3 px-4 hover:bg-gray-100 rounded-xl flex items-center gap-3 transition-colors text-left">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+        <span class="text-gray-700">AI 创作</span>
+      </button>
+      <button class="w-full py-3 px-4 hover:bg-gray-100 rounded-xl flex items-center gap-3 transition-colors text-left bg-gray-100">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+        </svg>
+        <span class="text-gray-700">云盘</span>
+      </button>
+      <button class="w-full py-3 px-4 hover:bg-gray-100 rounded-xl flex items-center gap-3 transition-colors text-left">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        <span class="text-gray-700">更多</span>
+        <svg class="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- 历史对话分隔 -->
+    <div class="px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wider" v-if="!collapsed">
+      历史对话
+    </div>
+
+    <!-- 对话列表 -->
+    <div class="flex-1 overflow-y-auto px-2" v-if="!collapsed">
+      <!-- 空状态 -->
+      <div v-if="store.conversations.length === 0" class="px-4 py-8 text-center text-gray-400 text-sm">
+        <div class="text-gray-300 text-4xl mb-2">💬</div>
+        <div>暂无对话</div>
+      </div>
+
+      <!-- 对话列表 -->
+      <div class="space-y-0.5">
+        <div
+          v-for="conv in store.conversations"
+          :key="conv.id"
+          @click="selectConversation(conv)"
+          class="py-2.5 px-3 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors group flex items-start gap-3"
+          :class="{ 'bg-gray-100': store.currentConversation?.id === conv.id }"
+        >
+          <!-- 消息气泡图标 -->
+          <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          
+          <!-- 对话标题 -->
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-gray-700 truncate">{{ conv.title }}</div>
+          </div>
+          
+          <!-- 删除按钮 -->
+          <button
+            @click.stop="deleteConv(conv.id)"
+            class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all shrink-0 text-gray-400 hover:text-red-500"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部设置区域 -->
+    <div class="border-t border-gray-100 p-3" v-if="!collapsed">
+      <div class="flex items-center gap-3 px-3 py-2">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="text-sm font-medium text-gray-700">用户</div>
+        </div>
+        <button
+          @click="$emit('toggle')"
+          class="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-400"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -113,18 +151,5 @@ async function deleteConv(id) {
   if (confirm('Delete this conversation?')) {
     await store.deleteConversation(id)
   }
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now - date
-
-  if (diff < 60000) return 'Just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
-  return date.toLocaleDateString()
 }
 </script>
