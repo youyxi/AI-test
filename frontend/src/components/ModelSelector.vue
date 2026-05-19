@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative" ref="selectorRef">
     <button 
       @click="isOpen = !isOpen"
       class="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -11,7 +11,6 @@
       </svg>
     </button>
     
-    <!-- 下拉菜单 -->
     <div 
       v-if="isOpen"
       class="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg border z-50 overflow-hidden"
@@ -52,11 +51,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useChatStore } from '../stores/chat'
 
 const store = useChatStore()
 const isOpen = ref(false)
+const selectorRef = ref(null)
 
 const currentModel = computed(() => store.currentModel)
 
@@ -71,7 +71,18 @@ const groupedModels = computed(() => {
 
 onMounted(() => {
   store.loadProviders()
+  document.addEventListener('click', handleClickOutside)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+function handleClickOutside(event) {
+  if (selectorRef.value && !selectorRef.value.contains(event.target)) {
+    isOpen.value = false
+  }
+}
 
 function selectModel(model) {
   store.setModel(model)
@@ -87,11 +98,4 @@ function formatTokens(tokens) {
   if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`
   return tokens
 }
-
-// 点击外部关闭
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.relative')) {
-    isOpen.value = false
-  }
-})
 </script>

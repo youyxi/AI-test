@@ -2,8 +2,94 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as api from '../api/chat'
 
+const defaultProviders = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    configured: false,
+    models: [
+      {
+        id: 'gpt-4',
+        name: 'GPT-4',
+        provider: 'openai',
+        providerName: 'OpenAI',
+        supports_vision: true,
+        max_tokens: 128000
+      },
+      {
+        id: 'gpt-3.5-turbo',
+        name: 'GPT-3.5 Turbo',
+        provider: 'openai',
+        providerName: 'OpenAI',
+        supports_vision: false,
+        max_tokens: 16385
+      }
+    ]
+  },
+  {
+    id: 'claude',
+    name: 'Claude',
+    configured: false,
+    models: [
+      {
+        id: 'claude-3-opus',
+        name: 'Claude 3 Opus',
+        provider: 'claude',
+        providerName: 'Claude',
+        supports_vision: true,
+        max_tokens: 200000
+      },
+      {
+        id: 'claude-3-sonnet',
+        name: 'Claude 3 Sonnet',
+        provider: 'claude',
+        providerName: 'Claude',
+        supports_vision: true,
+        max_tokens: 200000
+      }
+    ]
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini',
+    configured: false,
+    models: [
+      {
+        id: 'gemini-pro',
+        name: 'Gemini Pro',
+        provider: 'gemini',
+        providerName: 'Gemini',
+        supports_vision: true,
+        max_tokens: 32768
+      }
+    ]
+  },
+  {
+    id: 'qwen',
+    name: '通义千问',
+    configured: false,
+    models: [
+      {
+        id: 'qwen-turbo',
+        name: 'Qwen Turbo',
+        provider: 'qwen',
+        providerName: '通义千问',
+        supports_vision: false,
+        max_tokens: 8192
+      },
+      {
+        id: 'qwen-plus',
+        name: 'Qwen Plus',
+        provider: 'qwen',
+        providerName: '通义千问',
+        supports_vision: false,
+        max_tokens: 32768
+      }
+    ]
+  }
+]
+
 export const useChatStore = defineStore('chat', () => {
-  // State
   const messages = ref([])
   const conversations = ref([])
   const currentConversation = ref(null)
@@ -11,7 +97,6 @@ export const useChatStore = defineStore('chat', () => {
   const streamingContent = ref('')
   const isStopped = ref(false)
 
-  // Current model
   const currentModel = ref({
     id: 'gpt-3.5-turbo',
     name: 'GPT-3.5 Turbo',
@@ -22,10 +107,8 @@ export const useChatStore = defineStore('chat', () => {
   const availableModels = ref([])
   const providers = ref([])
 
-  // Computed
   const hasMessages = computed(() => messages.value.length > 0)
 
-  // Methods
   async function loadProviders() {
     try {
       const data = await api.getProviders()
@@ -48,7 +131,20 @@ export const useChatStore = defineStore('chat', () => {
         currentModel.value = configuredModel
       }
     } catch (error) {
-      console.error('Failed to load providers:', error)
+      console.error('Failed to load providers, using defaults:', error)
+      providers.value = defaultProviders
+      
+      const models = []
+      defaultProviders.forEach(provider => {
+        provider.models.forEach(model => {
+          models.push({
+            ...model,
+            providerName: provider.name,
+            configured: false
+          })
+        })
+      })
+      availableModels.value = models
     }
   }
 
@@ -58,6 +154,7 @@ export const useChatStore = defineStore('chat', () => {
       conversations.value = data
     } catch (error) {
       console.error('Failed to load conversations:', error)
+      conversations.value = []
     }
   }
 
@@ -163,7 +260,6 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
-    // State
     messages,
     conversations,
     currentConversation,
@@ -174,10 +270,8 @@ export const useChatStore = defineStore('chat', () => {
     availableModels,
     providers,
 
-    // Computed
     hasMessages,
 
-    // Methods
     loadProviders,
     loadConversations,
     loadConversationMessages,
