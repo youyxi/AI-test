@@ -26,15 +26,13 @@
           <ModelSelector />
 
           <!-- User Menu -->
-          <div class="relative">
+          <div class="relative" ref="userMenuRef">
             <button
-              @click="showUserMenu = !showUserMenu"
+              @click="toggleUserMenu"
               class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <div class="w-8 h-8 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+              <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-bold">{{ userLetter }}</span>
               </div>
             </button>
 
@@ -82,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import Sidebar from './components/Sidebar.vue'
@@ -92,14 +90,30 @@ const router = useRouter()
 const authStore = useAuthStore()
 const sidebarCollapsed = ref(false)
 const showUserMenu = ref(false)
+const userMenuRef = ref(null)
 
 const userLetter = computed(() => {
   const name = authStore.user?.nickname || authStore.user?.username || ''
   return name.charAt(0).toUpperCase()
 })
 
+function toggleUserMenu() {
+  showUserMenu.value = !showUserMenu.value
+}
+
+function handleClickOutside(event) {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+    showUserMenu.value = false
+  }
+}
+
 onMounted(() => {
   authStore.init()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 function handleLogout() {
