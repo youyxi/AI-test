@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="h-full bg-gray-50 text-gray-800 transition-all duration-300 flex flex-col shadow-sm"
+    class="h-full bg-gray-50 text-gray-800 transition-all duration-300 flex flex-col shadow-sm relative"
     :class="collapsed ? 'w-16' : 'w-72'"
   >
     <!-- 用户信息头部 -->
@@ -88,7 +88,7 @@
           
           <!-- 删除按钮 -->
           <button
-            @click.stop="deleteConv(conv.id)"
+            @click.stop="showDeleteConfirm(conv.id, $event)"
             class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all shrink-0 text-gray-400 hover:text-red-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +96,29 @@
             </svg>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 删除确认框 -->
+    <div
+      v-if="confirmBox.visible"
+      class="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-4 w-64"
+      :style="{ left: confirmBox.x + 'px', top: confirmBox.y + 'px' }"
+    >
+      <div class="text-sm text-gray-700 mb-4">确定要删除这个对话吗？</div>
+      <div class="flex gap-3">
+        <button
+          @click="cancelDelete"
+          class="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
+        >
+          取消
+        </button>
+        <button
+          @click="confirmDelete"
+          class="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
+        >
+          删除
+        </button>
       </div>
     </div>
 
@@ -124,7 +147,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useChatStore } from '../stores/chat'
 
 defineProps({
@@ -135,9 +158,27 @@ defineEmits(['toggle'])
 
 const store = useChatStore()
 
+const confirmBox = reactive({
+  visible: false,
+  conversationId: null,
+  x: 0,
+  y: 0
+})
+
 onMounted(() => {
   store.loadConversations()
+  document.addEventListener('click', handleClickOutside)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+function handleClickOutside(event) {
+  if (confirmBox.visible) {
+    cancelDelete()
+  }
+}
 
 function newChat() {
   store.clearMessages()
@@ -147,9 +188,24 @@ async function selectConversation(conv) {
   await store.loadConversationMessages(conv.id)
 }
 
-async function deleteConv(id) {
-  if (confirm('Delete this conversation?')) {
-    await store.deleteConversation(id)
+function showDeleteConfirm(id, event) {
+  event.stopPropagation()
+  const rect = event.target.getBoundingClientRect()
+  confirmBox.conversationId = id
+  confirmBox.x = rect.left - 140
+  confirmBox.y = rect.top - 80
+  confirmBox.visible = true
+}
+
+function cancelDelete() {
+  confirmBox.visible = false
+  confirmBox.conversationId = null
+}
+
+async function confirmDelete() {
+  if (confirmBox.conversationId) {
+    await store.deleteConversation(confirmBox.conversationId)
   }
+  cancelDelete()
 }
 </script>
