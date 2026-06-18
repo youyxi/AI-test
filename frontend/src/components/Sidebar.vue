@@ -5,16 +5,13 @@
   >
     <!-- 用户信息头部 -->
     <div class="border-b border-gray-100" :class="collapsed ? 'p-3' : 'p-4'">
-      <!-- 折叠状态：图标垂直排列 -->
-      <div v-if="collapsed" class="flex flex-col items-center gap-2">
-        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-          AI
-        </div>
+      <!-- 折叠状态：仅显示文档图标按钮，位于原AI图标位置 -->
+      <div v-if="collapsed" class="flex justify-center">
         <button
           @click="$emit('toggle')"
-          class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+          class="w-9 h-9 border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
         >
-          <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
             <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
           </svg>
         </button>
@@ -158,16 +155,6 @@
         </div>
         <div class="flex-1">
           <div class="text-sm font-medium text-gray-700">用户</div>
-        </div>
-      </div>
-    </div>
-    <!-- 折叠状态底部区域 -->
-    <div class="border-t border-gray-100 p-3" v-else>
-      <div class="flex justify-center">
-        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
-          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
         </div>
       </div>
     </div>
