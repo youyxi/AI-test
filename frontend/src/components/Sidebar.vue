@@ -1,17 +1,40 @@
 <template>
   <aside
-    class="h-full bg-gray-50 text-gray-800 transition-all duration-300 flex flex-col shadow-sm"
+    class="h-full bg-gray-50 text-gray-800 transition-all duration-300 flex flex-col shadow-sm relative"
     :class="collapsed ? 'w-16' : 'w-72'"
   >
     <!-- 用户信息头部 -->
-    <div class="p-4 border-b border-gray-100">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-          AI
+    <div class="border-b border-gray-100" :class="collapsed ? 'p-3' : 'p-4'">
+      <!-- 折叠状态：仅显示文档图标按钮，位于原AI图标位置 -->
+      <div v-if="collapsed" class="flex justify-center">
+        <button
+          @click="$emit('toggle')"
+          class="w-9 h-9 border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+        >
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+      <!-- 展开状态：logo + 标题 + 图标 -->
+      <div v-else class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+            AI
+          </div>
+          <div>
+            <div class="font-medium">AI Chat Hub</div>
+          </div>
         </div>
-        <div v-if="!collapsed">
-          <div class="font-medium">AI Chat Hub</div>
-        </div>
+        <!-- 右上角图标 — 点击切换侧边栏 -->
+        <button
+          @click="$emit('toggle')"
+          class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0"
+        >
+          <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -88,7 +111,7 @@
           
           <!-- 删除按钮 -->
           <button
-            @click.stop="deleteConv(conv.id)"
+            @click.stop="showDeleteConfirm(conv.id, $event)"
             class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all shrink-0 text-gray-400 hover:text-red-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +119,29 @@
             </svg>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 删除确认框 -->
+    <div
+      v-if="confirmBox.visible"
+      class="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-4 w-64"
+      :style="{ left: confirmBox.x + 'px', top: confirmBox.y + 'px' }"
+    >
+      <div class="text-sm text-gray-700 mb-4">确定要删除这个对话吗？</div>
+      <div class="flex gap-3">
+        <button
+          @click="cancelDelete"
+          class="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
+        >
+          取消
+        </button>
+        <button
+          @click="confirmDelete"
+          class="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
+        >
+          删除
+        </button>
       </div>
     </div>
 
@@ -110,21 +156,13 @@
         <div class="flex-1">
           <div class="text-sm font-medium text-gray-700">用户</div>
         </div>
-        <button
-          @click="$emit('toggle')"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-400"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useChatStore } from '../stores/chat'
 
 defineProps({
@@ -135,9 +173,27 @@ defineEmits(['toggle'])
 
 const store = useChatStore()
 
+const confirmBox = reactive({
+  visible: false,
+  conversationId: null,
+  x: 0,
+  y: 0
+})
+
 onMounted(() => {
   store.loadConversations()
+  document.addEventListener('click', handleClickOutside)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+function handleClickOutside(event) {
+  if (confirmBox.visible) {
+    cancelDelete()
+  }
+}
 
 function newChat() {
   store.clearMessages()
@@ -147,9 +203,24 @@ async function selectConversation(conv) {
   await store.loadConversationMessages(conv.id)
 }
 
-async function deleteConv(id) {
-  if (confirm('Delete this conversation?')) {
-    await store.deleteConversation(id)
+function showDeleteConfirm(id, event) {
+  event.stopPropagation()
+  const rect = event.target.getBoundingClientRect()
+  confirmBox.conversationId = id
+  confirmBox.x = rect.left - 140
+  confirmBox.y = rect.top - 80
+  confirmBox.visible = true
+}
+
+function cancelDelete() {
+  confirmBox.visible = false
+  confirmBox.conversationId = null
+}
+
+async function confirmDelete() {
+  if (confirmBox.conversationId) {
+    await store.deleteConversation(confirmBox.conversationId)
   }
+  cancelDelete()
 }
 </script>
