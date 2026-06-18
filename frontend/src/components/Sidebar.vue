@@ -4,7 +4,7 @@
     :class="collapsed ? 'w-16' : 'w-72'"
   >
     <!-- 用户信息头部 -->
-    <div class="p-4 border-b border-gray-100">
+    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
           AI
@@ -13,6 +13,15 @@
           <div class="font-medium">AI Chat Hub</div>
         </div>
       </div>
+      <!-- 右上角图标 -->
+      <button
+        v-if="!collapsed"
+        class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+      >
+        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
+        </svg>
+      </button>
     </div>
 
     <!-- 新对话按钮 -->
