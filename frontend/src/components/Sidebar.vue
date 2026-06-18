@@ -4,24 +4,41 @@
     :class="collapsed ? 'w-16' : 'w-72'"
   >
     <!-- 用户信息头部 -->
-    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+    <div class="border-b border-gray-100" :class="collapsed ? 'p-3' : 'p-4'">
+      <!-- 折叠状态：图标垂直排列 -->
+      <div v-if="collapsed" class="flex flex-col items-center gap-2">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
           AI
         </div>
-        <div v-if="!collapsed">
-          <div class="font-medium">AI Chat Hub</div>
-        </div>
+        <button
+          @click="$emit('toggle')"
+          class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+        >
+          <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
+          </svg>
+        </button>
       </div>
-      <!-- 右上角图标 -->
-      <button
-        v-if="!collapsed"
-        class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
-      >
-        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-          <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
-        </svg>
-      </button>
+      <!-- 展开状态：logo + 标题 + 图标 -->
+      <div v-else class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+            AI
+          </div>
+          <div>
+            <div class="font-medium">AI Chat Hub</div>
+          </div>
+        </div>
+        <!-- 右上角图标 — 点击切换侧边栏 -->
+        <button
+          @click="$emit('toggle')"
+          class="w-6 h-6 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0"
+        >
+          <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <rect x="9" y="5" width="10" height="14" rx="1.5" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- 新对话按钮 -->
@@ -142,14 +159,16 @@
         <div class="flex-1">
           <div class="text-sm font-medium text-gray-700">用户</div>
         </div>
-        <button
-          @click="$emit('toggle')"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-400"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+      </div>
+    </div>
+    <!-- 折叠状态底部区域 -->
+    <div class="border-t border-gray-100 p-3" v-else>
+      <div class="flex justify-center">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
-        </button>
+        </div>
       </div>
     </div>
   </aside>
